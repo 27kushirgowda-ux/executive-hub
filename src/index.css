@@ -1,0 +1,75 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body {
+  transition: background-color 0.3s, color 0.3s;
+}
+
+body {
+  margin: 0;
+}
+
+.app-bg {
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  /* STRONG COLORS (IMPORTANT) */
+  background: linear-gradient(
+    120deg,
+    #bfdbfe,   /* blue */
+    #ddd6fe,   /* purple */
+    #fbcfe8    /* pink */
+  );
+
+  background-size: 300% 300%;
+  animation: gradientMove 8s ease infinite;
+}
+
+@keyframes bgMove {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.animate-bgMove {
+  background-size: 200% 200%;
+  animation: bgMove 8s ease infinite;
+}
+
+.input {
+  width: 100%;
+  margin-bottom: 12px;
+  padding: 12px;
+  border-radius: 12px;
+
+  background: rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(10px);
+
+  border: 1px solid rgba(255,255,255,0.6);
+  outline: none;
+
+  font-size: 14px;
+}
+
+/* ❌ Remove browser default password eye icon */
+input[type="password"]::-ms-reveal,
+input[type="password"]::-ms-clear {
+  display: none;
+}
+
+input[type="password"]::-webkit-credentials-auto-fill-button,
+input[type="password"]::-webkit-textfield-decoration-container {
+  display: none !important;
+}
+
+/* in index.css */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(0,0,0,0.2);
+  border-radius: 10px;
+}
