@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { auth, db } from "../firebase";
 import { onAuthStateChanged } from "firebase/auth";
-import { doc, onSnapshot, updateDoc } from "firebase/firestore"; // 🎯 Removed getDoc, added onSnapshot
+import { doc, onSnapshot, updateDoc } from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
 import { 
   Phone, 
@@ -12,8 +12,7 @@ import {
   Save, 
   X, 
   Mail, 
-  GraduationCap,
-  ShieldCheck,
+  ShieldCheck, 
   Zap,
   Link2,
   Fingerprint,
@@ -53,12 +52,12 @@ export default function Profile({ dark }) {
   };
 
   useEffect(() => {
-    let unsubMentor = () => {}; // Cleanup variable
+    let unsubMentor = () => {}; 
 
     const unsubAuth = onAuthStateChanged(auth, (u) => {
       if (!u) return navigate("/Login");
 
-      // 1. Listen to Intern's Profile
+      // 1. Live Listen to Intern's Profile
       const unsubUser = onSnapshot(doc(db, "users", u.uid), (snap) => {
         if (snap.exists()) {
           const data = snap.data();
@@ -71,14 +70,14 @@ export default function Profile({ dark }) {
             branch: data.branch || ""
           });
 
-          // 🎯 2. REAL-TIME MENTOR PRIVACY BRIDGE
-          if (data.mentorId && data.mentorId.trim() !== "") {
-            // We create a live listener for the mentor's document
+          // 🎯 2. THE MENTOR BRIDGE: 
+          // If the mentorId is present (meaning they've been accepted)
+          if (data.mentorId) {
+            // Clean up any existing mentor listener before starting a new one
+            unsubMentor(); 
             unsubMentor = onSnapshot(doc(db, "users", data.mentorId), (mSnap) => {
               if (mSnap.exists()) {
                 setMentorData(mSnap.data());
-              } else {
-                setMentorData({ name: "Hub Unavailable", email: "N/A", mobile: "N/A", showMobile: false });
               }
             });
           } else {
@@ -88,8 +87,12 @@ export default function Profile({ dark }) {
         setLoading(false);
       });
 
-      return () => { unsubUser(); unsubMentor(); };
+      return () => { 
+        unsubUser(); 
+        unsubMentor(); 
+      };
     });
+
     return () => unsubAuth();
   }, [navigate]);
 
@@ -100,8 +103,9 @@ export default function Profile({ dark }) {
       await updateDoc(doc(db, "users", auth.currentUser.uid), { ...formData });
       setSaveMessage("Identity Synchronized ✅");
       setIsEditing(false);
-    } catch (err) { setSaveMessage("Sync Error ❌"); }
-    finally {
+    } catch (err) { 
+      setSaveMessage("Sync Error ❌"); 
+    } finally {
       setIsSaving(false);
       setTimeout(() => setSaveMessage(""), 3000);
     }
@@ -115,24 +119,24 @@ export default function Profile({ dark }) {
       <div className={styles.ambientGlow} style={{ top: '-100px', left: '-100px' }}></div>
       <div className={styles.ambientGlow} style={{ bottom: '100px', right: '-100px' }}></div>
 
-      {/* --- HEADER CARD --- */}
+      {/* --- HEADER IDENTITY --- */}
       <div className={`${styles.card} p-10 md:p-14 rounded-[4rem] border flex flex-col md:flex-row items-center gap-10`}>
         <div className={styles.innerShine}></div>
         <div className={`w-32 h-32 md:w-40 md:h-40 rounded-[3rem] flex items-center justify-center text-5xl font-black shadow-2xl relative z-20 transition-transform hover:rotate-3 ${
-          dark ? 'bg-amber-500 text-black' : 'bg-gradient-to-br from-pink-500 to-purple-600 text-white'
+          dark ? 'bg-amber-500 text-black' : 'bg-gradient-to-br from-pink-500 to-purple-600 text-white shadow-purple-500/20'
         }`}>
           {formData.name?.charAt(0).toUpperCase() || "U"}
         </div>
 
         <div className="flex-1 text-center md:text-left relative z-20">
-          <p className={`text-[10px] font-black uppercase tracking-[0.6em] ${styles.sub} mb-4`}>User Identity Console</p>
-          <h2 className="text-5xl md:text-6xl font-black tracking-tighter italic uppercase leading-none mb-4">{formData.name || "Candidate"}</h2>
+          <p className={`text-[10px] font-black uppercase tracking-[0.6em] ${styles.sub} mb-4`}>Operational Identity</p>
+          <h2 className="text-4xl md:text-6xl font-black tracking-tighter italic uppercase leading-none mb-4">{formData.name || "Candidate"}</h2>
           <div className="flex flex-wrap justify-center md:justify-start gap-4">
              <div className={`px-4 py-1.5 rounded-full border border-white/10 text-[9px] font-black uppercase tracking-widest ${dark ? 'bg-white/5' : 'bg-black/5'}`}>
-               Executive {user?.role || "Intern"}
+               Registry Role: {user?.role || "Intern"}
              </div>
              <div className={`px-4 py-1.5 rounded-full border border-amber-500/20 text-[9px] font-black uppercase tracking-widest ${styles.accent} bg-amber-500/5`}>
-               {formData.domain || "Domain Pending"}
+               {formData.domain || "Assigning Domain..."}
              </div>
           </div>
           {saveMessage && <p className="mt-6 text-[10px] font-black uppercase tracking-widest text-green-500 animate-pulse">{saveMessage}</p>}
@@ -141,11 +145,11 @@ export default function Profile({ dark }) {
         <div className="relative z-20">
           {isEditing ? (
             <div className="flex gap-4">
-              <button onClick={handleSave} className="p-6 bg-green-500 text-white rounded-3xl shadow-xl hover:scale-105 transition active:scale-95"><Save size={24}/></button>
-              <button onClick={() => setIsEditing(false)} className="p-6 bg-red-500 text-white rounded-3xl shadow-xl hover:scale-105 transition active:scale-95"><X size={24}/></button>
+              <button onClick={handleSave} className="p-6 bg-green-500 text-white rounded-3xl shadow-xl hover:scale-105 active:scale-95 transition-all"><Save size={24}/></button>
+              <button onClick={() => setIsEditing(false)} className="p-6 bg-red-500 text-white rounded-3xl shadow-xl hover:scale-105 active:scale-95 transition-all"><X size={24}/></button>
             </div>
           ) : (
-            <button onClick={() => setIsEditing(true)} className={`flex items-center gap-3 px-10 py-6 rounded-[2.2rem] font-black text-[11px] uppercase tracking-[0.3em] shadow-2xl transition-all hover:-translate-y-1 active:scale-95 ${dark ? 'bg-white text-black hover:bg-amber-500' : 'bg-[#1e1b4b] text-white'}`}>
+            <button onClick={() => setIsEditing(true)} className={`flex items-center gap-3 px-10 py-6 rounded-[2.2rem] font-black text-[11px] uppercase tracking-[0.3em] shadow-2xl transition-all hover:-translate-y-1 active:scale-95 ${dark ? 'bg-white text-black' : 'bg-[#1e1b4b] text-white'}`}>
               <Edit2 size={16}/> Modify Profile
             </button>
           )}
@@ -159,15 +163,15 @@ export default function Profile({ dark }) {
           <div className={styles.innerShine}></div>
           <div className="flex items-center gap-4 opacity-40">
             <Fingerprint size={20}/>
-            <h3 className="text-[11px] font-black uppercase tracking-[0.4em] italic">Authorized Details</h3>
+            <h3 className="text-[11px] font-black uppercase tracking-[0.4em] italic">Candidate Credentials</h3>
           </div>
           
           <div className="space-y-6">
             {[
-              { label: "Operational ID", value: auth.currentUser?.uid, icon: <Zap size={14}/>, readonly: true },
-              { label: "Mobile Access", key: "mobile", icon: <Phone size={14}/> },
+              { label: "Internal UID", value: auth.currentUser?.uid, icon: <Zap size={14}/>, readonly: true },
+              { label: "Communication Link", key: "mobile", icon: <Phone size={14}/> },
               { label: "Institutional Hub", key: "college", icon: <Globe size={14}/> },
-              { label: "Academic Stream", key: "branch", icon: <BookOpen size={14}/> }
+              { label: "Operational Stream", key: "branch", icon: <BookOpen size={14}/> }
             ].map((field, idx) => (
               <div key={idx} className="space-y-2">
                 <p className={`${styles.sub} text-[9px] font-black uppercase tracking-widest flex items-center gap-2`}>
@@ -181,7 +185,7 @@ export default function Profile({ dark }) {
                   />
                 ) : (
                   <p className="font-black text-sm uppercase tracking-tight truncate">
-                    {field.readonly ? field.value : (formData[field.key] || "NOT DECLARED")}
+                    {field.readonly ? field.value : (formData[field.key] || "UNSET")}
                   </p>
                 )}
               </div>
@@ -189,48 +193,53 @@ export default function Profile({ dark }) {
           </div>
         </div>
 
-        {/* --- 🛡️ MENTOR SYNC (FIXED LOGIC) --- */}
+        {/* --- 🛡️ EXECUTIVE SYNC (The Accepted Mentor) --- */}
         <div className={`${styles.card} p-10 md:p-12 rounded-[4rem] border flex flex-col`}>
           <div className={styles.innerShine}></div>
           <div className="flex items-center gap-4 mb-10 opacity-40">
-            <Fingerprint size={20}/>
-            <h3 className="text-[11px] font-black uppercase tracking-[0.4em] italic">Executive Support</h3>
+            <ShieldCheck size={20}/>
+            <h3 className="text-[11px] font-black uppercase tracking-[0.4em] italic">Executive Oversight</h3>
           </div>
           
-          <div className="flex-1">
+          <div className="flex-1 flex flex-col">
             {mentorData ? (
-              <div className="space-y-10 animate-in fade-in duration-700">
+              <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
                 <div className="space-y-2">
-                   <p className={`${styles.sub} text-[9px] font-black uppercase tracking-widest flex items-center gap-2`}><UserIcon size={14}/> Supervisor Identity</p>
-                   <p className="font-black text-2xl uppercase tracking-tighter italic">{mentorData.name}</p>
+                   <p className={`${styles.sub} text-[9px] font-black uppercase tracking-widest flex items-center gap-2`}><UserIcon size={14}/> Assigned Supervisor</p>
+                   <p className="font-black text-3xl uppercase tracking-tighter italic leading-none">{mentorData.name}</p>
                 </div>
+
                 <div className="space-y-2">
                    <p className={`${styles.sub} text-[9px] font-black uppercase tracking-widest flex items-center gap-2`}><Mail size={14}/> Official Channel</p>
-                   <p className={`font-black text-xs uppercase tracking-widest ${styles.accent}`}>{mentorData.email}</p>
+                   <p className={`font-black text-sm uppercase tracking-widest ${styles.accent} break-all`}>{mentorData.email}</p>
                 </div>
+
                 <div className="space-y-2">
                    <p className={`${styles.sub} text-[9px] font-black uppercase tracking-widest flex items-center gap-2`}><Phone size={14}/> Priority Contact</p>
-                   {/* 🎯 FIXED PRIVACY LOGIC: Checks Mentor's Live showMobile boolean */}
-                   <p className="font-black text-sm tracking-[0.2em] uppercase">
+                   {/* 🎯 Privacy logic: Only show number if Mentor enabled it in their settings */}
+                   <p className="font-black text-base tracking-[0.2em] uppercase">
                      {mentorData.showMobile === true ? (mentorData.mobile || "NOT SET") : "SECURED"}
                    </p>
                 </div>
 
-                <div className={`mt-10 p-8 rounded-[3rem] border flex items-center gap-6 ${dark ? 'bg-green-500/10 border-green-500/20 shadow-green-500/5' : 'bg-green-50 border-green-200'}`}>
+                <div className={`mt-auto p-8 rounded-[3rem] border flex items-center gap-6 ${dark ? 'bg-green-500/10 border-green-500/20 shadow-green-500/5' : 'bg-green-50 border-green-200'}`}>
                    <div className="w-14 h-14 rounded-2xl bg-green-500 flex items-center justify-center text-white shadow-xl shadow-green-500/20">
                      <ShieldCheck size={28} />
                    </div>
                    <div>
                      <p className="text-[10px] font-black text-green-500 uppercase tracking-[0.3em]">Hub Connection</p>
-                     <p className={`text-sm font-black uppercase ${dark ? 'text-white' : 'text-slate-800'}`}>Verified Integrity</p>
+                     <p className={`text-sm font-black uppercase ${dark ? 'text-white' : 'text-slate-800'}`}>Verified Mentor Sync</p>
                    </div>
                 </div>
               </div>
             ) : (
               <div className="flex-1 flex flex-col items-center justify-center text-center opacity-30">
-                <Link2 size={64} className="mb-6" />
-                <p className="text-[12px] font-black uppercase tracking-[0.4em] max-w-[250px]">No Operational Hub Linked.</p>
-                <button onClick={() => navigate("/app/dashboard")} className={`mt-8 px-8 py-4 rounded-full border text-[10px] font-black uppercase tracking-widest hover:bg-current hover:text-white transition-all`}>Join Hub</button>
+                <div className="w-20 h-20 rounded-full border-2 border-dashed border-current flex items-center justify-center mb-6">
+                   <Link2 size={32} className="animate-pulse" />
+                </div>
+                <p className="text-[12px] font-black uppercase tracking-[0.4em] max-w-[220px] leading-relaxed">
+                  Awaiting Executive Recruitment Confirmation.
+                </p>
               </div>
             )}
           </div>

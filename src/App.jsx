@@ -21,6 +21,7 @@ import MentorDashboard from "./pages/MentorDashboard";
 import InternReview from "./pages/InternReview";
 import MentorSettings from "./pages/MentorSettings";
 import MentorProfile from "./pages/MentorProfile";
+import RecruitPool from "./pages/RecruitPool";
 
 // --- ADMIN IMPORTS ---
 import AdminLogin from "./pages/AdminLogin";
@@ -77,6 +78,7 @@ function App() {
           <Route path="settings" element={<MentorSettings dark={dark} setDark={setDark} />} />
           <Route path="profile" element={<MentorProfile dark={dark} />} />
           <Route path="review/:internId" element={<InternReview dark={dark} />} />
+          <Route path="recruit" element={<RecruitPool dark={dark} />} />
         </Route>
 
         {/* ---------------------------------------------------------

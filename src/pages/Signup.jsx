@@ -57,56 +57,58 @@ export default function Signup({ dark }) {
   const handleSignup = async () => {
     setError("");
     
-    // 1. Purely Frontend Validation
-    if (!name || !email || !password) {
-      setError("Registration Denied: All fields required.");
+    // 1. Validation
+    if (!name || !email || !password || !domain) {
+      setError("Registry Denied: All core fields required.");
+      return;
+    }
+    if (role === "Intern" && !usn) {
+      setError("Registry Denied: USN/ID required for Interns.");
       return;
     }
     if (password !== confirmPassword) {
-      setError("Registration Denied: Key mismatch.");
+      setError("Registry Denied: Password mismatch.");
       return;
     }
 
     setLoading(true);
     try {
-      // 2. Auth Instance Creation
+      // 2. Create Auth User
       const userCred = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCred.user;
 
-      // 3. Preparation of Local Data Ledger
+      // 3. Prepare the "Waiting Room" Data Ledger
       const userData = {
         uid: user.uid,
         name: name.trim(),
         email: user.email.toLowerCase(),
         role: role,
+        domain: domain.trim(),
         createdAt: serverTimestamp(),
-        domain: domain.trim() || "General Systems",
-        mentorId: "", 
-        mobile: "", 
-        showMobile: true,
-        uploadDeadline: "18:00",
+        
+        // --- 🔐 SECURITY & RECRUITMENT FLAGS ---
+        isApproved: false, // Locked for BOTH until Admin (for Mentor) or Mentor (for Intern) accepts
+        mentorId: null,    // Interns stay in "The Pool" until claimed
       };
 
+      // Role specific necessary data
       if (role === "Intern") {
-        userData.usn = usn.trim().toUpperCase() || "N/A";
+        userData.usn = usn.trim().toUpperCase();
         userData.progress = 0;
-        userData.internshipDuration = 90;
-      } else {
-        userData.internsCount = 0;
-        userData.hubActive = true;
       }
 
       // 4. Firestore Commit
       await setDoc(doc(db, "users", user.uid), userData);
 
-      // 5. Force session termination to prevent identity bleed
+      // 5. Force session termination
+      // This ensures they have to log in AFTER approval for a fresh session
       await signOut(auth); 
       
+      alert("Registration Successful. Your profile is now awaiting corporate authorization.");
       navigate("/Login");
       
     } catch (err) {
-      // 🎯 THE SILENCE FIX: All backend errors are funneled into one generic frontend message.
-      setError("Sync Error: Protocol refused. Check input format.");
+      setError("Sync Error: Protocol refused. User may already exist.");
     } finally {
       setLoading(false);
     }
@@ -132,7 +134,7 @@ export default function Signup({ dark }) {
           <p className={`text-[10px] font-black uppercase tracking-[0.5em] mt-4 ${styles.subText}`}>Identity Registration Terminal</p>
         </div>
 
-        {/* GENERIC ERROR FEEDBACK */}
+        {/* ERROR FEEDBACK */}
         {error && (
           <div className="mb-8 p-5 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-500 text-[10px] font-black uppercase tracking-[0.2em] text-center animate-bounce">
             {error}
@@ -157,6 +159,7 @@ export default function Signup({ dark }) {
              </div>
           </div>
 
+          {/* NAME */}
           <div className="relative">
             <Sparkles className={`absolute left-6 top-1/2 -translate-y-1/2 ${styles.subText}`} size={18} />
             <input 
@@ -167,6 +170,7 @@ export default function Signup({ dark }) {
             />
           </div>
 
+          {/* EMAIL */}
           <div className="relative">
             <Mail className={`absolute left-6 top-1/2 -translate-y-1/2 ${styles.subText}`} size={18} />
             <input 
@@ -178,26 +182,30 @@ export default function Signup({ dark }) {
             />
           </div>
           
-          {role === "Intern" ? (
-            <div className="relative animate-in slide-in-from-left duration-500">
-              <Hash className={`absolute left-6 top-1/2 -translate-y-1/2 ${styles.subText}`} size={18} />
-              <input 
-                placeholder="College USN / ID" 
-                onChange={(e) => setUsn(e.target.value)} 
-                className={`w-full pl-16 pr-8 py-5 rounded-[2rem] border outline-none font-bold text-sm tracking-tight transition-all ${styles.input}`} 
-              />
-            </div>
-          ) : (
-            <div className="relative animate-in slide-in-from-right duration-500">
-              <Building2 className={`absolute left-6 top-1/2 -translate-y-1/2 ${styles.subText}`} size={18} />
-              <input 
-                placeholder="Expert Domain" 
-                onChange={(e) => setDomain(e.target.value)} 
-                className={`w-full pl-16 pr-8 py-5 rounded-[2rem] border outline-none font-bold text-sm tracking-tight transition-all ${styles.input}`} 
-              />
-            </div>
-          )}
+          {/* USN (FOR INTERNS) / DOMAIN (FOR MENTORS) */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+             <div className="relative">
+                <Building2 className={`absolute left-6 top-1/2 -translate-y-1/2 ${styles.subText}`} size={18} />
+                <input 
+                  placeholder={role === "Mentor" ? "Expert Domain" : "Dept/Domain"} 
+                  onChange={(e) => setDomain(e.target.value)} 
+                  className={`w-full pl-16 pr-8 py-5 rounded-[2rem] border outline-none font-bold text-sm tracking-tight transition-all ${styles.input}`} 
+                />
+              </div>
 
+              {role === "Intern" && (
+                <div className="relative animate-in slide-in-from-left duration-500">
+                  <Hash className={`absolute left-6 top-1/2 -translate-y-1/2 ${styles.subText}`} size={18} />
+                  <input 
+                    placeholder="College USN" 
+                    onChange={(e) => setUsn(e.target.value)} 
+                    className={`w-full pl-16 pr-8 py-5 rounded-[2rem] border outline-none font-bold text-sm tracking-tight transition-all ${styles.input}`} 
+                  />
+                </div>
+              )}
+          </div>
+
+          {/* PASSWORD */}
           <div className="relative">
             <Lock className={`absolute left-6 top-1/2 -translate-y-1/2 ${styles.subText}`} size={18} />
             <input
@@ -211,6 +219,7 @@ export default function Signup({ dark }) {
             </button>
           </div>
 
+          {/* CONFIRM PASSWORD */}
           <div className="relative">
             <Lock className={`absolute left-6 top-1/2 -translate-y-1/2 ${styles.subText}`} size={18} />
             <input 

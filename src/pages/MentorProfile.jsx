@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { auth, db } from "../firebase";
-import { doc, getDoc, updateDoc } from "firebase/firestore";
+import { doc, onSnapshot, updateDoc } from "firebase/firestore";
+import { onAuthStateChanged } from "firebase/auth";
 import { 
   User, 
   Mail, 
@@ -15,7 +16,8 @@ import {
   AlertCircle,
   Fingerprint,
   Globe,
-  Zap
+  Zap,
+  ShieldAlert
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -50,30 +52,33 @@ export default function MentorProfile({ dark }) {
   };
 
   useEffect(() => {
-    const fetchProfile = async () => {
-      if (auth.currentUser) {
-        const docRef = doc(db, "users", auth.currentUser.uid);
-        const snap = await getDoc(docRef);
-        if (snap.exists()) {
-          const data = snap.data();
-          setProfile(data);
-          setFormData({
-            name: data.name || "",
-            domain: data.domain || "",
-            phone: data.phone || ""
-          });
-        }
+    let unsub = () => {};
+    const unsubAuth = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        unsub = onSnapshot(doc(db, "users", user.uid), (snap) => {
+          if (snap.exists()) {
+            const data = snap.data();
+            setProfile(data);
+            setFormData({
+              name: data.name || "",
+              domain: data.domain || "",
+              phone: data.phone || ""
+            });
+          }
+        });
+      } else {
+        navigate("/Login");
       }
-    };
-    fetchProfile();
-  }, []);
+    });
+    return () => { unsubAuth(); unsub(); };
+  }, [navigate]);
 
   const handleSave = async () => {
     const cleanPhone = formData.phone.replace(/\D/g, "");
 
     // 🛑 VALIDATION: India Mobile Standards
     if (cleanPhone.length !== 10) {
-      setError("ENTER VALID 10-DIGIT INDIAN MOBILE");
+      setError("PROTOCOL ERROR: VALID 10-DIGIT MOBILE REQUIRED");
       setTimeout(() => setError(""), 4000);
       return;
     }
@@ -87,11 +92,10 @@ export default function MentorProfile({ dark }) {
         phone: cleanPhone
       });
       
-      setProfile({ ...profile, ...formData, phone: cleanPhone });
       setIsEditing(false);
       setError("");
     } catch (err) {
-      setError("SYNC REFUSED. CHECK CONNECTION.");
+      setError("SYNC REFUSED. SYSTEM CONNECTION ERROR.");
     } finally {
       setLoading(false);
     }
@@ -110,7 +114,7 @@ export default function MentorProfile({ dark }) {
           onClick={() => navigate(-1)}
           className={`flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.4em] opacity-30 hover:opacity-100 transition-all ${styles.text}`}
         >
-          <ArrowLeft size={16} /> Back to Hub
+          <ArrowLeft size={16} /> Back to Terminal
         </button>
 
         {!isEditing ? (
@@ -135,7 +139,7 @@ export default function MentorProfile({ dark }) {
               disabled={loading}
               className={`flex items-center gap-3 px-8 py-4 bg-green-600 rounded-2xl text-white text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-all shadow-xl shadow-green-500/20`}
             >
-              <Check size={14} /> {loading ? "Syncing..." : "Commit Changes"}
+              <Check size={14} /> {loading ? "SYNCING..." : "COMMIT CHANGES"}
             </button>
           </div>
         )}
@@ -145,8 +149,8 @@ export default function MentorProfile({ dark }) {
       <div className={`${styles.card} p-10 md:p-16 rounded-[4rem] border flex flex-col md:flex-row items-center gap-10`}>
         <div className={styles.innerShine}></div>
         
-        {/* Mentor Avatar */}
-        <div className={`w-32 h-32 md:w-40 md:h-40 rounded-[3rem] flex items-center justify-center text-black text-5xl font-black shadow-2xl relative z-20 transition-transform hover:rotate-3 ${
+        {/* Avatar with Italic Initial */}
+        <div className={`w-32 h-32 md:w-40 md:h-40 rounded-[3rem] flex items-center justify-center text-black text-5xl font-black italic shadow-2xl relative z-20 transition-transform hover:rotate-3 ${
           dark ? 'bg-amber-500 shadow-amber-500/20' : 'bg-gradient-to-br from-pink-500 to-purple-600 text-white shadow-purple-500/20'
         }`}>
           {formData.name?.charAt(0).toUpperCase() || "M"}
@@ -155,7 +159,7 @@ export default function MentorProfile({ dark }) {
         <div className="text-center md:text-left flex-1 z-20">
           {isEditing ? (
             <div className="mb-4">
-              <p className={`text-[9px] font-black uppercase tracking-widest ${styles.sub} mb-2`}>Full Name</p>
+              <p className={`text-[9px] font-black uppercase tracking-widest ${styles.sub} mb-2`}>Full Identity Name</p>
               <input 
                 value={formData.name}
                 onChange={(e) => setFormData({...formData, name: e.target.value})}
@@ -165,25 +169,34 @@ export default function MentorProfile({ dark }) {
             </div>
           ) : (
             <h1 className="text-5xl md:text-7xl font-black tracking-tighter italic uppercase leading-none mb-4">
-              {profile?.name || "Executive Mentor"}
+              {profile?.name || "EXECUTIVE MENTOR"}
             </h1>
           )}
           
           <div className="flex flex-wrap justify-center md:justify-start gap-4">
              <div className={`px-5 py-2 rounded-full border border-amber-500/20 text-[10px] font-black uppercase tracking-widest ${styles.accent} bg-amber-500/5`}>
-               Expertise: {profile?.domain || "General"}
+               Expertise: {profile?.domain || "System Architecture"}
              </div>
-             <div className={`px-5 py-2 rounded-full border border-white/10 text-[10px] font-black uppercase tracking-widest ${dark ? 'bg-white/5' : 'bg-black/5'}`}>
-               Master Supervisor
-             </div>
+             
+             {/* 🛡️ VERIFICATION BADGE */}
+             <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg border ${
+                profile?.isApproved 
+                ? 'border-green-500/20 bg-green-500/10 text-green-500' 
+                : 'border-amber-500/20 bg-amber-500/10 text-amber-500'
+              }`}>
+                <div className={`w-1.5 h-1.5 rounded-full ${profile?.isApproved ? 'bg-green-500 animate-pulse' : 'bg-amber-500'}`}></div>
+                <span className="text-[10px] font-black uppercase tracking-widest">
+                  {profile?.isApproved ? "Verified Corporate Lead" : "Authorization Pending"}
+                </span>
+              </div>
           </div>
         </div>
       </div>
 
       {/* --- ERROR FEEDBACK --- */}
       {error && (
-        <div className="px-4 animate-bounce">
-          <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-center gap-4 text-red-500">
+        <div className="px-4 animate-bounce relative z-20">
+          <div className="p-5 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-center gap-4 text-red-500">
             <AlertCircle size={20} />
             <p className="text-[10px] font-black uppercase tracking-[0.2em]">{error}</p>
           </div>
@@ -193,12 +206,12 @@ export default function MentorProfile({ dark }) {
       {/* --- DETAILS GRID --- */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 relative z-20">
         
-        {/* PRIMARY INFO */}
+        {/* IDENTITY CREDENTIALS */}
         <div className={`${styles.card} p-10 md:p-12 rounded-[3.5rem] border space-y-10`}>
           <div className={styles.innerShine}></div>
           <div className="flex items-center gap-4 opacity-40">
             <Fingerprint size={20}/>
-            <h3 className="text-[11px] font-black uppercase tracking-[0.4em] italic">Identity Credentials</h3>
+            <h3 className="text-[11px] font-black uppercase tracking-[0.4em] italic">Network Profile</h3>
           </div>
 
           <div className="space-y-8">
@@ -214,26 +227,26 @@ export default function MentorProfile({ dark }) {
                   value={formData.domain}
                   onChange={(e) => setFormData({...formData, domain: e.target.value})}
                   className={`w-full p-4 rounded-2xl border outline-none font-black text-xs uppercase tracking-widest ${styles.input}`}
-                  placeholder="e.g. SOFTWARE ARCHITECTURE"
+                  placeholder="e.g. DATA ANALYTICS"
                 />
               ) : (
-                <p className="font-black text-sm uppercase tracking-tight">{profile?.domain || "NOT SET"}</p>
+                <p className="font-black text-sm uppercase tracking-tight">{profile?.domain || "GENERAL SYSTEMS"}</p>
               )}
             </div>
           </div>
         </div>
 
-        {/* SECURE DATA */}
+        {/* SECURITY DATA */}
         <div className={`${styles.card} p-10 md:p-12 rounded-[3.5rem] border space-y-10`}>
           <div className={styles.innerShine}></div>
           <div className="flex items-center gap-4 opacity-40">
             <Globe size={20}/>
-            <h3 className="text-[11px] font-black uppercase tracking-[0.4em] italic">Access & Security</h3>
+            <h3 className="text-[11px] font-black uppercase tracking-[0.4em] italic">Access & Secure Data</h3>
           </div>
 
           <div className="space-y-8">
             <div className="space-y-2">
-              <p className={`${styles.sub} text-[9px] font-black uppercase tracking-widest flex items-center gap-2`}><Phone size={14}/> Mobile (India +91)</p>
+              <p className={`${styles.sub} text-[9px] font-black uppercase tracking-widest flex items-center gap-2`}><Phone size={14}/> Mobile Connection (+91)</p>
               {isEditing ? (
                 <div className="flex items-center gap-4">
                   <span className="text-xs font-black opacity-30">+91</span>
@@ -247,7 +260,7 @@ export default function MentorProfile({ dark }) {
                 </div>
               ) : (
                 <p className="font-black text-sm tracking-[0.2em]">
-                  {profile?.phone ? `+91 ${profile.phone}` : "SECURED / NOT SET"}
+                  {profile?.phone ? `+91 ${profile.phone}` : "SYSTEM SECURED"}
                 </p>
               )}
             </div>
@@ -267,7 +280,7 @@ export default function MentorProfile({ dark }) {
             <div className={styles.innerShine}></div>
             <ShieldCheck size={24} className={styles.accent}/>
             <p className="text-[10px] font-black uppercase italic tracking-[0.25em] opacity-40 text-center leading-none">
-              Verified Mentor Protocol Enabled.
+              Verified Executive Personnel Session Active.
             </p>
          </div>
       </div>

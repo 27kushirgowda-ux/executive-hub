@@ -59,29 +59,31 @@ export default function Login({ dark }) {
       // 1. Authenticate with Firebase Auth
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       
-      // 2. ⚡ CRITICAL: Fetch the Role directly from Firestore immediately
+      // 2. ⚡ FETCH ROLE & APPROVAL STATUS
       const userSnap = await getDoc(doc(db, "users", userCredential.user.uid));
 
       if (userSnap.exists()) {
         const userData = userSnap.data();
         const role = userData.role;
 
-        setSuccess(`Identity Verified: Initializing ${role} Hub...`);
+        setSuccess(`Identity Verified: Initializing ${role} Portal...`);
         
-        // 3. Precise Redirection based on Database Role
+        // 3. Precise Redirection based on Hierarchy
+        // The dashboards (Mentor/Intern) will handle the "Locked" UI if isApproved is false
         setTimeout(() => {
-          if (role === "Mentor") {
+          if (role === "Admin") {
+            navigate("/admin-dashboard");
+          } else if (role === "Mentor") {
             navigate("/mentor/dashboard");
           } else {
             navigate("/app/dashboard");
           }
         }, 1000);
       } else {
-        setError("Security Alert: Identity not found in Hub Ledger.");
+        setError("Security Alert: Identity not found in Corporate Ledger.");
       }
     } catch (e) {
-      console.error("Login Error:", e.code);
-      setError("Authentication Refused: Invalid Key or Network Failure.");
+      setError("Authentication Refused: Invalid Access Key.");
     } finally {
       setLoading(false);
     }
@@ -99,7 +101,6 @@ export default function Login({ dark }) {
   return (
     <div className={`min-h-screen flex items-center justify-center relative overflow-hidden p-6 transition-all duration-700 ${styles.bg}`}>
       
-      {/* 🚨 AMBIENT GLOWS */}
       <div className={styles.ambientGlow} style={{ top: '-100px', left: '-100px' }}></div>
       <div className={styles.ambientGlow} style={{ bottom: '100px', right: '-100px' }}></div>
 
@@ -132,18 +133,18 @@ export default function Login({ dark }) {
         )}
 
         <div className="space-y-5 relative z-20">
-          {/* EMAIL (Casing Restored) */}
+          {/* EMAIL */}
           <div className="relative">
             <Mail className={`absolute left-6 top-1/2 -translate-y-1/2 ${styles.subText}`} size={18} />
             <input
               type="email"
-              placeholder="Official Email"
+              placeholder="Corporate Email"
               className={`w-full pl-16 pr-8 py-5 rounded-[2rem] border outline-none font-bold text-sm tracking-tight transition-all ${styles.input}`}
               onChange={(e) => setEmail(e.target.value)}
             />
           </div>
 
-          {/* PASSWORD (Casing Restored) */}
+          {/* PASSWORD */}
           {!forgotMode && (
             <div className="relative group">
               <Lock className={`absolute left-6 top-1/2 -translate-y-1/2 ${styles.subText}`} size={18} />
@@ -164,7 +165,7 @@ export default function Login({ dark }) {
           )}
         </div>
 
-        {/* SUBMIT BUTTON (Kept Uppercase for style) */}
+        {/* SUBMIT BUTTON */}
         <button
           onClick={forgotMode ? handleReset : handleLogin}
           disabled={loading}
